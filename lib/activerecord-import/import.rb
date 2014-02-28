@@ -218,7 +218,11 @@ class ActiveRecord::Base
       end
 
       return_obj = if is_validating
-        import_with_validations( column_names, array_of_attributes, options )
+        if models
+          import_models_with_validations( models, column_names, array_of_attributes, options )
+        else
+          import_with_validations( column_names, array_of_attributes, options )
+        end
       else
         num_inserts = import_without_validations_or_callbacks( column_names, array_of_attributes, options )
         ActiveRecord::Import::Result.new([], num_inserts)
@@ -256,6 +260,34 @@ class ActiveRecord::Base
         instance = new do |model|
           hsh.each_pair{ |k,v| model.send("#{k}=", v) }
         end
+        if not instance.valid?
+          array_of_attributes[ i ] = nil
+          failed_instances << instance
+        end
+      end
+      array_of_attributes.compact!
+
+      num_inserts = if array_of_attributes.empty? || options[:all_or_none] && failed_instances.any?
+                      0
+                    else
+                      import_without_validations_or_callbacks( column_names, array_of_attributes, options )
+                    end
+      ActiveRecord::Import::Result.new(failed_instances, num_inserts)
+    end
+
+    # Imports the passed in +models+, +column_names+ and +array_of_attributes+
+    # given the passed in +options+ Hash with validations. Returns an
+    # object with the methods +failed_instances+ and +num_inserts+.
+    # +failed_instances+ is an array of instances that failed validations.
+    # +num_inserts+ is the number of inserts it took to import the data. See
+    # ActiveRecord::Base.import for more information on
+    # +column_names+, +array_of_attributes+ and +options+.
+    def import_models_with_validations( models, column_names, array_of_attributes, options={} )
+      failed_instances = []
+
+      # keep track of the instance and the position it is currently at. if this fails
+      # validation we'll use the index to remove it from the array_of_attributes
+      models.each_with_index do |instance,i|
         if not instance.valid?
           array_of_attributes[ i ] = nil
           failed_instances << instance
