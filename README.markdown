@@ -2,6 +2,11 @@
 
 activerecord-import is a library for bulk inserting data using ActiveRecord.
 
+## Reasons of forking
+- document all_or_none option
+- add option to stop validating and importing at first model validation error
+- reuse models for validation when they are given in parameter
+
 ### Rails 4.0
 
 Use activerecord-import 0.4.0 or higher.
