@@ -107,6 +107,8 @@ class ActiveRecord::Base
     #   existing model instances in memory with updates from the import.
     # * +timestamps+ - true|false, tells import to not add timestamps \
     #   (if false) even if record timestamps is disabled in ActiveRecord::Base
+    # * +keep_validating+ - true|false, tells import whether to keep validating \
+    #   when one model does not validate. Default to true
     #
     # == Examples
     #  class BlogPost < ActiveRecord::Base ; end
@@ -120,7 +122,7 @@ class ActiveRecord::Base
     #  # Example using column_names and array_of_values
     #  columns = [ :author_name, :title ]
     #  values = [ [ 'zdennis', 'test post' ], [ 'jdoe', 'another test post' ] ]
-    #  BlogPost.import columns, values 
+    #  BlogPost.import columns, values
     #
     #  # Example using column_names, array_of_value and options
     #  columns = [ :author_name, :title ]
@@ -142,7 +144,7 @@ class ActiveRecord::Base
     #
     # == On Duplicate Key Update (MySQL only)
     #
-    # The :on_duplicate_key_update option can be either an Array or a Hash. 
+    # The :on_duplicate_key_update option can be either an Array or a Hash.
     #
     # ==== Using an Array
     #
@@ -166,7 +168,7 @@ class ActiveRecord::Base
     # * failed_instances - an array of objects that fails validation and were not committed to the database. An empty array if no validation is performed.
     # * num_inserts - the number of insert statements it took to import the data
     def import( *args )
-      options = { :validate=>true, :timestamps=>true }
+      options = { :validate=>true, :timestamps=>true, :keep_validating=>true }
       options.merge!( args.pop ) if args.last.is_a? Hash
 
       is_validating = options.delete( :validate )
@@ -243,6 +245,7 @@ class ActiveRecord::Base
     # ActiveRecord::Base.import for more information on
     # +column_names+, +array_of_attributes+ and +options+.
     def import_with_validations( column_names, array_of_attributes, options={} )
+      options[:keep_validating] = true if options[:keep_validating].nil?
       failed_instances = []
 
       # create instances for each of our column/value sets
@@ -255,8 +258,11 @@ class ActiveRecord::Base
           hsh.each_pair{ |k,v| model.send("#{k}=", v) }
         end
         if not instance.valid?
-          array_of_attributes[ i ] = nil
           failed_instances << instance
+          unless options[:keep_validating]
+            return ActiveRecord::Import::Result.new(failed_instances, 0)
+          end
+          array_of_attributes[ i ] = nil
         end
       end
       array_of_attributes.compact!
