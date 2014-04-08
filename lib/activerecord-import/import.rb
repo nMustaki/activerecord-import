@@ -111,6 +111,8 @@ class ActiveRecord::Base
     #   some models do not validate
     # * +keep_validating+ - true|false, tells import whether to keep validating \
     #   when one model does not validate. Default to true
+    # * +table_name+ - if you use partionning, chances are quoted_table_name is not \
+    #   correct, so you can pass here the one to use
     #
     # == Examples
     #  class BlogPost < ActiveRecord::Base ; end
@@ -170,13 +172,7 @@ class ActiveRecord::Base
     # * failed_instances - an array of objects that fails validation and were not committed to the database. An empty array if no validation is performed.
     # * num_inserts - the number of insert statements it took to import the data
     def import( *args )
-<<<<<<< HEAD
       options = { :validate=>true, :timestamps=>true, :keep_validating=>true, :all_or_none=>false }
-||||||| merged common ancestors
-      options = { :validate=>true, :timestamps=>true }
-=======
-      options = { :validate=>true, :timestamps=>true, :all_or_none=>false, :keep_validating=>true }
->>>>>>> 4ae1984883b575e690e798dbbdd9bf652cedc58f
       options.merge!( args.pop ) if args.last.is_a? Hash
 
       is_validating = options.delete( :validate )
@@ -208,9 +204,6 @@ class ActiveRecord::Base
       else
         raise ArgumentError.new( "Invalid arguments!" )
       end
-
-      # dup the passed in array so we don't modify it unintentionally
-      array_of_attributes = array_of_attributes.dup
 
       # Force the primary key col into the insert if it's not
       # on the list and we are using a sequence and stuff a nil
@@ -257,69 +250,10 @@ class ActiveRecord::Base
     # ActiveRecord::Base.import for more information on
     # +column_names+, +array_of_attributes+ and +options+.
     def import_with_validations( column_names, array_of_attributes, options={} )
-      options[:keep_validating] = true if options[:keep_validating].nil?
-      failed_instances = []
-
       # create instances for each of our column/value sets
       arr = validations_array_for_column_names_and_attributes( column_names, array_of_attributes )
 
-      # keep track of the instance and the position it is currently at. if this fails
-      # validation we'll use the index to remove it from the array_of_attributes
-      arr.each_with_index do |hsh,i|
-        instance = new do |model|
-          hsh.each_pair{ |k,v| model.send("#{k}=", v) }
-        end
-        if not instance.valid?
-<<<<<<< HEAD
-          failed_instances << instance
-          unless options[:keep_validating]
-            return ActiveRecord::Import::Result.new(failed_instances, 0)
-          end
-          array_of_attributes[ i ] = nil
-        end
-      end
-      array_of_attributes.compact!
-
-      num_inserts = if array_of_attributes.empty? || options[:all_or_none] && failed_instances.any?
-                      0
-                    else
-                      import_without_validations_or_callbacks( column_names, array_of_attributes, options )
-                    end
-      ActiveRecord::Import::Result.new(failed_instances, num_inserts)
-    end
-
-    # Imports the passed in +models+, +column_names+ and +array_of_attributes+
-    # given the passed in +options+ Hash with validations. Returns an
-    # object with the methods +failed_instances+ and +num_inserts+.
-    # +failed_instances+ is an array of instances that failed validations.
-    # +num_inserts+ is the number of inserts it took to import the data. See
-    # ActiveRecord::Base.import for more information on
-    # +column_names+, +array_of_attributes+ and +options+.
-    def import_models_with_validations( models, column_names, array_of_attributes, options={} )
-      failed_instances = []
-
-      # keep track of the instance and the position it is currently at. if this fails
-      # validation we'll use the index to remove it from the array_of_attributes
-      models.each_with_index do |instance,i|
-        if not instance.valid?
-||||||| merged common ancestors
-=======
-          failed_instances << instance
-          unless options[:keep_validating]
-            return ActiveRecord::Import::Result.new(failed_instances, 0)
-          end
->>>>>>> 4ae1984883b575e690e798dbbdd9bf652cedc58f
-          array_of_attributes[ i ] = nil
-        end
-      end
-      array_of_attributes.compact!
-
-      num_inserts = if array_of_attributes.empty? || options[:all_or_none] && failed_instances.any?
-                      0
-                    else
-                      import_without_validations_or_callbacks( column_names, array_of_attributes, options )
-                    end
-      ActiveRecord::Import::Result.new(failed_instances, num_inserts)
+      return import_models_with_validations(arr, column_names, array_of_attributes, options)
     end
 
     # Imports the passed in +models+, +column_names+ and +array_of_attributes+
@@ -380,8 +314,10 @@ class ActiveRecord::Base
         column
       end
 
+      table_name = options[:table_name] || quoted_table_name
+
       columns_sql = "(#{column_names.map{|name| connection.quote_column_name(name) }.join(',')})"
-      insert_sql = "INSERT #{options[:ignore] ? 'IGNORE ':''}INTO #{quoted_table_name} #{columns_sql} VALUES "
+      insert_sql = "INSERT #{options[:ignore] ? 'IGNORE ':''}INTO #{table_name} #{columns_sql} VALUES "
       values_sql = values_sql_for_columns_and_attributes(columns, array_of_attributes)
       if not supports_import?
         number_inserted = 0
@@ -391,7 +327,7 @@ class ActiveRecord::Base
         end
       else
         # generate the sql
-        post_sql_statements = connection.post_sql_statements( quoted_table_name, options )
+        post_sql_statements = connection.post_sql_statements( table_name, options )
 
         # perform the inserts
         number_inserted = connection.insert_many( [ insert_sql, post_sql_statements ].flatten,
