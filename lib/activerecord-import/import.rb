@@ -251,7 +251,7 @@ class ActiveRecord::Base
       # create instances for each of our column/value sets
       arr = validations_array_for_column_names_and_attributes( column_names, array_of_attributes )
 
-      return import_models_with_validations(arr, column_names, array_of_attributes, options)
+      return import_models_with_validations(arr, column_names, options)
     end
 
     # Imports the passed in +models+, +column_names+ and +array_of_attributes+
