@@ -261,7 +261,7 @@ class ActiveRecord::Base
     # +num_inserts+ is the number of inserts it took to import the data. See
     # ActiveRecord::Base.import for more information on
     # +column_names+, +array_of_attributes+ and +options+.
-    def import_models_with_validations( models, column_names, array_of_attributes, options={} )
+    def import_models_with_validations( models, column_names, options={} )
       failed_instances = []
 
       # keep track of the instance and the position it is currently at. if this fails
