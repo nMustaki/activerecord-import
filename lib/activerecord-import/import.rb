@@ -109,8 +109,6 @@ class ActiveRecord::Base
     #   (if false) even if record timestamps is disabled in ActiveRecord::Base
     # * +all_or_none+ - true|false, tells import whether to import even \
     #   some models do not validate
-    # * +keep_validating+ - true|false, tells import whether to keep validating \
-    #   when one model does not validate. Default to true
     # * +table_name+ - if you use partionning, chances are quoted_table_name is not \
     #   correct, so you can pass here the one to use
     #
@@ -172,7 +170,7 @@ class ActiveRecord::Base
     # * failed_instances - an array of objects that fails validation and were not committed to the database. An empty array if no validation is performed.
     # * num_inserts - the number of insert statements it took to import the data
     def import( *args )
-      options = { :validate=>true, :timestamps=>true, :keep_validating=>true, :all_or_none=>false }
+      options = { :validate=>true, :timestamps=>true, :all_or_none=>false }
       options.merge!( args.pop ) if args.last.is_a? Hash
 
       is_validating = options.delete( :validate )
@@ -264,7 +262,6 @@ class ActiveRecord::Base
     # ActiveRecord::Base.import for more information on
     # +column_names+, +array_of_attributes+ and +options+.
     def import_models_with_validations( models, column_names, array_of_attributes, options={} )
-      options[:keep_validating] = true if options[:keep_validating].nil?
       failed_instances = []
 
       # keep track of the instance and the position it is currently at. if this fails
@@ -272,7 +269,7 @@ class ActiveRecord::Base
       models.each_with_index do |instance,i|
         if not instance.valid?
           failed_instances << instance
-          unless options[:keep_validating]
+          unless options[:all_or_none]
             return ActiveRecord::Import::Result.new(failed_instances, 0)
           end
           array_of_attributes[ i ] = nil
