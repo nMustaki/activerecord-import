@@ -269,7 +269,7 @@ class ActiveRecord::Base
       models.each_with_index do |instance,i|
         if not instance.valid?
           failed_instances << instance
-          unless options[:all_or_none]
+          if options[:all_or_none]
             return ActiveRecord::Import::Result.new(failed_instances, 0)
           end
           array_of_attributes[ i ] = nil
