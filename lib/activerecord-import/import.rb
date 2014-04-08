@@ -266,15 +266,21 @@ class ActiveRecord::Base
 
       # keep track of the instance and the position it is currently at. if this fails
       # validation we'll use the index to remove it from the array_of_attributes
+      binding.pry
       models.each_with_index do |instance,i|
-        if not instance.valid?
-          failed_instances << instance
-          if options[:all_or_none]
-            return ActiveRecord::Import::Result.new(failed_instances, 0)
+        begin
+          if not instance.valid?
+            failed_instances << instance
+            if options[:all_or_none]
+              return ActiveRecord::Import::Result.new(failed_instances, 0)
+            end
+            array_of_attributes[ i ] = nil
           end
-          array_of_attributes[ i ] = nil
+        rescue => e
+          binding.pry
         end
       end
+      binding.pry
       array_of_attributes.compact!
 
       num_inserts = if array_of_attributes.empty? || options[:all_or_none] && failed_instances.any?
